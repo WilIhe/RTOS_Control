@@ -74,6 +74,13 @@ const osThreadAttr_t APPSCalibration_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal,
 };
+/* Definitions for ReadUserCommand */
+osThreadId_t ReadUserCommandHandle;
+const osThreadAttr_t ReadUserCommand_attributes = {
+  .name = "ReadUserCommand",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityBelowNormal1,
+};
 /* USER CODE BEGIN PV */
 
 CAN_TxHeaderTypeDef TxHeader; // Header containing the information of the transmitted frame
@@ -125,6 +132,7 @@ static void MX_ADC1_Init(void);
 void ControlPedal(void *argument);
 void DisplayData(void *argument);
 void StartAPPSCalibration(void *argument);
+void StartReadUserCommand(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -211,6 +219,9 @@ int main(void)
 
   /* creation of APPSCalibration */
   APPSCalibrationHandle = osThreadNew(StartAPPSCalibration, NULL, &APPSCalibration_attributes);
+
+  /* creation of ReadUserCommand */
+  ReadUserCommandHandle = osThreadNew(StartReadUserCommand, NULL, &ReadUserCommand_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -645,6 +656,24 @@ void StartAPPSCalibration(void *argument)
     osDelay(1);
   }
   /* USER CODE END StartAPPSCalibration */
+}
+
+/* USER CODE BEGIN Header_StartReadUserCommand */
+/**
+* @brief Function implementing the ReadUserCommand thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartReadUserCommand */
+void StartReadUserCommand(void *argument)
+{
+  /* USER CODE BEGIN StartReadUserCommand */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartReadUserCommand */
 }
 
 /**
