@@ -536,6 +536,22 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+// CAN Transmit Function
+HAL_StatusTypeDef CAN_Send(uint32_t id, uint8_t *data, uint8_t length)
+{
+//    CAN_TxHeaderTypeDef TxHeader;
+//    uint32_t TxMailbox;
+
+    TxHeader.StdId = id;
+    TxHeader.ExtId = 0;
+    TxHeader.IDE   = CAN_ID_STD;
+    TxHeader.RTR   = CAN_RTR_DATA;
+    TxHeader.DLC   = length;
+    TxHeader.TransmitGlobalTime = DISABLE;
+
+    return HAL_CAN_AddTxMessage(&hcan, &TxHeader, data, &TxMailbox);
+}
+
 // Function to check if a certain message was received over the last half second
 uint8_t lastMessageSent(uint32_t lastMessage){
 	if ((HAL_GetTick() - lastMessage) >= 3000) {
@@ -567,7 +583,7 @@ void ControlPedal(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	UBaseType_t highWaterMark;
+//	UBaseType_t highWaterMark;
 
 	HAL_ADC_Start(&hadc1); // Starts ADC1 on STM32
 //	HAL_ADC_PollForConversion(&hadc1, 20); // ADC data collected via polling with timeout of 20 units
@@ -634,9 +650,9 @@ void ControlPedal(void *argument)
 	  Error_Handler();
 	}
 
-	highWaterMark = uxTaskGetStackHighWaterMark(NULL);
-
-	printf("Unused stack: %lu words\r\n", (uint32_t)highWaterMark); // Prints how much space a task is not using
+//	highWaterMark = uxTaskGetStackHighWaterMark(NULL);
+//
+//	printf("Unused stack: %lu words\r\n", (uint32_t)highWaterMark); // Prints how much space a task is not using
 
     osDelay(500);
   }
