@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdlib.h>
 
 /* USER CODE END Includes */
 
@@ -35,6 +36,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+#define DISPLAY_CAN_MESSAGE 1			// Turn this on/off if you want to print/ignore raw CAN Messages
+#define DISPLAY_CAN_ERRORS 1			// Turn this on/off if you want to print/ignore CAN Errors
 
 // Pedal Calibration Inversion Constants
 #define  InvertAnalogOnePedal 0 // Swap the max and min pedal voltages on analog line one
@@ -125,6 +129,29 @@ char msg[20];
 char CANBuffer[100]; // Buffer used to display CAN messages on terminal
 uint16_t CalculatedValue; // The value to be sent over to the MC over CAN
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////CAN Watchdog /////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+// Initializes variables to be used to check when the last respective message was sent
+ uint32_t lastHeartBeatMessage = 0;
+ uint32_t lastTemMessage = 0;
+ uint32_t lastAmsMessage = 0;
+ uint32_t lastMcMessage = 0;
+ uint32_t lastChargerMessage = 0;
+
+ // Initializes flags to indicate when a certain ECU hasn't sent a message in a second, timing out
+ uint8_t heartBeatError = 0;
+ uint8_t temError = 0;
+ uint8_t amsError = 0;
+ uint8_t mcError = 0;
+ uint8_t chargerError = 0;
+
+ // Creates int to determine if we are charging or not
+ uint8_t isCharging = 1;
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -139,6 +166,12 @@ void StartAPPSCalibration(void *argument);
 void StartCANWatchdog(void *argument);
 
 /* USER CODE BEGIN PFP */
+
+// Prototype for CAN Transmission
+HAL_StatusTypeDef CAN_Send(uint32_t id, uint8_t *data, uint8_t length);
+
+// Prototype to see if a certain message hasn't been seen in over a second
+uint8_t lastMessageSent(uint32_t lastMessage);
 
 /* USER CODE END PFP */
 
@@ -164,6 +197,8 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+
+  HAL_Delay(35000);				// Add a delay for startup to have no power to not fault anything
 
   /* USER CODE END Init */
 
@@ -501,6 +536,22 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+// Function to check if a certain message was received over the last half second
+uint8_t lastMessageSent(uint32_t lastMessage){
+	if ((HAL_GetTick() - lastMessage) >= 3000) {
+		return 1;
+	}
+	return 0;
+}
+
+
+// Function to override print
+//int _write(int file, char *ptr, int len)
+//{
+//    HAL_UART_Transmit(&huart2, (uint8_t *)ptr, len, HAL_MAX_DELAY);
+//    return len;
+//}
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_ControlPedal */
@@ -675,6 +726,71 @@ void StartCANWatchdog(void *argument)
   /* Infinite loop */
   for(;;)
   {
+
+	  // Send CAN Heartbeat message
+	 CAN_Send(0x123, TxData, 8);
+
+	 // Throw a lil delay to let the CAN message go thru
+	 osDelay(50);
+
+	 // Check if each message has been received over the past half second
+	 heartBeatError = lastMessageSent(lastHeartBeatMessage);
+	 temError = lastMessageSent(lastTemMessage);
+	 amsError = lastMessageSent(lastAmsMessage);
+	 mcError = lastMessageSent(lastMcMessage);
+
+	 // If charging enabled, also check for charger
+	 if(isCharging)
+	 {
+		 chargerError = lastMessageSent(lastChargerMessage);
+	 }
+	 else{
+		 chargerError = 0;
+	 }
+
+
+	 // If any of the error flags are high, Shut the relay down
+	 if(heartBeatError + temError + amsError + mcError + chargerError)
+	 {
+		 HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET); // This turns the LED on
+		 HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_RESET);
+	 }
+	 else
+	 {
+		 HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET); // This turns the LED off
+		 HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);
+
+		 // Displays to the console any errors
+		 if(DISPLAY_CAN_ERRORS)
+		 {
+			 if(heartBeatError)
+			 {
+				 printf("Heartbeat message not received within a second.\r\n");
+				 fflush(stdout);
+			 }
+			 if(temError)
+			 {
+				 printf("TEM message not received within a second.\r\n");
+				 fflush(stdout);
+			 }
+			 if(amsError)
+			 {
+				 printf("AMS message not received within a second.\r\n");
+				 fflush(stdout);
+			 }
+			 if(mcError)
+			 {
+				 printf("MC message not received within a second.\r\n");
+				 fflush(stdout);
+			 }
+			 if(chargerError)
+			 {
+				 printf("Charger message not received within a second.\r\n");
+				 fflush(stdout);
+		 	 }
+	 	 }
+   	 }
+
     osDelay(1);
   }
   /* USER CODE END StartCANWatchdog */
