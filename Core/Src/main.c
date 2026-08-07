@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 /* USER CODE END Includes */
 
@@ -74,12 +75,12 @@ const osThreadAttr_t APPSCalibration_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal,
 };
-/* Definitions for ReadUserCommand */
-osThreadId_t ReadUserCommandHandle;
-const osThreadAttr_t ReadUserCommand_attributes = {
-  .name = "ReadUserCommand",
+/* Definitions for CANWatchdog */
+osThreadId_t CANWatchdogHandle;
+const osThreadAttr_t CANWatchdog_attributes = {
+  .name = "CANWatchdog",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityBelowNormal1,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 /* USER CODE BEGIN PV */
 
@@ -100,6 +101,9 @@ const uint16_t CMD_SetMaxBrakeCurrent = (0x900 + MC_NodeId); // Set max AC brake
 const uint16_t CMD_SetMaxDcCurrent = (0xA + MC_NodeId); // Set max DC current limit message ID
 const uint16_t CMD_SetMaxDcBrakeCurrent = (0xB + MC_NodeId); // Set max DC brake current limit message ID
 
+
+// Data from MC
+const uint16_t RCV_MC_GeneralData = (0x1F + MC_NodeId);
 
 // AMS Limits
 uint16_t DischargeCurrentLimit = 30; // AMS discharge current limit
@@ -132,7 +136,7 @@ static void MX_ADC1_Init(void);
 void ControlPedal(void *argument);
 void DisplayData(void *argument);
 void StartAPPSCalibration(void *argument);
-void StartReadUserCommand(void *argument);
+void StartCANWatchdog(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -220,8 +224,8 @@ int main(void)
   /* creation of APPSCalibration */
   APPSCalibrationHandle = osThreadNew(StartAPPSCalibration, NULL, &APPSCalibration_attributes);
 
-  /* creation of ReadUserCommand */
-  ReadUserCommandHandle = osThreadNew(StartReadUserCommand, NULL, &ReadUserCommand_attributes);
+  /* creation of CANWatchdog */
+  CANWatchdogHandle = osThreadNew(StartCANWatchdog, NULL, &CANWatchdog_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -658,22 +662,22 @@ void StartAPPSCalibration(void *argument)
   /* USER CODE END StartAPPSCalibration */
 }
 
-/* USER CODE BEGIN Header_StartReadUserCommand */
+/* USER CODE BEGIN Header_StartCANWatchdog */
 /**
-* @brief Function implementing the ReadUserCommand thread.
+* @brief Function implementing the CANWatchdog thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartReadUserCommand */
-void StartReadUserCommand(void *argument)
+/* USER CODE END Header_StartCANWatchdog */
+void StartCANWatchdog(void *argument)
 {
-  /* USER CODE BEGIN StartReadUserCommand */
+  /* USER CODE BEGIN StartCANWatchdog */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartReadUserCommand */
+  /* USER CODE END StartCANWatchdog */
 }
 
 /**
